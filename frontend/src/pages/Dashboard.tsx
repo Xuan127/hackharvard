@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Plus, Radio } from "lucide-react";
+import { Plus, Radio, Leaf } from "lucide-react";
 import { TopNavigation } from "@/components/TopNavigation";
 import { BudgetCard } from "@/components/BudgetCard";
 import { SustainabilityCard } from "@/components/SustainabilityCard";
@@ -14,6 +14,7 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { fetchSustainabilityComment, playAudioFromBase64 } from "@/utils/audioUtils";
 import { getCurrentLocation, formatLocation, LocationData } from "@/utils/locationUtils";
+import { io, Socket } from 'socket.io-client';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -25,6 +26,9 @@ const Dashboard = () => {
   const [showPreferencesDialog, setShowPreferencesDialog] = useState(false);
   const [hasSetPreferences, setHasSetPreferences] = useState(false);
   const [userLocation, setUserLocation] = useState<string>('');
+  const [socket, setSocket] = useState<Socket | null>(null);
+  const [lastDetectedObject, setLastDetectedObject] = useState<CartItemType | null>(null);
+  const [lastDetectionTime, setLastDetectionTime] = useState<Date | null>(null);
 
   const totalSpent = items.reduce((sum, item) => sum + item.price, 0);
   const avgSustainability = items.length > 0
@@ -69,6 +73,88 @@ const Dashboard = () => {
     };
 
     fetchLocation();
+  }, []);
+
+  // Function to add cart item
+  const addCartItem = (cartItem: CartItemType) => {
+    console.log('Received cart item from backend:', cartItem);
+    
+    // Update last detected object
+    setLastDetectedObject(cartItem);
+    setLastDetectionTime(new Date());
+    
+    // Add the item to the cart
+    setItems(prevItems => {
+      // Check if item already exists (by ID)
+      const existingItemIndex = prevItems.findIndex(item => item.id === cartItem.id);
+      
+      if (existingItemIndex !== -1) {
+        // Update existing item (increment count or update price)
+        const updatedItems = [...prevItems];
+        updatedItems[existingItemIndex] = {
+          ...updatedItems[existingItemIndex],
+          price: cartItem.price || updatedItems[existingItemIndex].price,
+          sustainabilityScore: cartItem.sustainabilityScore || updatedItems[existingItemIndex].sustainabilityScore
+        };
+        toast.info(`Updated: ${cartItem.name}`);
+        return updatedItems;
+      } else {
+        // Add new item
+        toast.success(`Added to cart: ${cartItem.name}`);
+        return [...prevItems, cartItem];
+      }
+    });
+  };
+
+  // WebSocket connection for real-time cart updates
+  useEffect(() => {
+    const newSocket = io('http://localhost:5008', {
+      transports: ['websocket', 'polling']
+    });
+
+    newSocket.on('connect', () => {
+      console.log('Connected to backend WebSocket for cart updates');
+    });
+
+    newSocket.on('cart_item_added', addCartItem);
+
+    newSocket.on('disconnect', () => {
+      console.log('Disconnected from backend WebSocket');
+    });
+
+    setSocket(newSocket);
+
+    // Cleanup on unmount
+    return () => {
+      newSocket.close();
+    };
+  }, []);
+
+  // File-based communication for cart items (alternative to WebSocket)
+  useEffect(() => {
+    let lastUpdateTime = '';
+    
+    const checkForUpdates = async () => {
+      try {
+        const response = await fetch('/cart_updates.json');
+        if (response.ok) {
+          const update = await response.json();
+          if (update && update.timestamp !== lastUpdateTime && update.type === 'cart_item_added') {
+            lastUpdateTime = update.timestamp;
+            addCartItem(update.cart_item);
+          }
+        }
+      } catch (error) {
+        // Silently handle errors - cart updates are optional
+      }
+    };
+
+    // Check for updates every 1 second
+    const interval = setInterval(checkForUpdates, 1000);
+
+    return () => {
+      clearInterval(interval);
+    };
   }, []);
 
   const handleRemoveItem = (id: string) => {
@@ -200,6 +286,70 @@ const Dashboard = () => {
                   {items.map((item) => (
                     <CartItem key={item.id} item={item} onRemove={handleRemoveItem} />
                   ))}
+                </div>
+              )}
+            </div>
+
+            {/* Last Detected Object */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-semibold text-foreground">
+                  Last Detected Object
+                </h2>
+              </div>
+              
+              {lastDetectedObject ? (
+                <div className="bg-card rounded-lg border border-border p-6 shadow-sm">
+                  <div className="flex items-center gap-4">
+                    <div className="w-16 h-16 rounded-lg overflow-hidden bg-muted flex-shrink-0">
+                      <img 
+                        src={lastDetectedObject.image} 
+                        alt={lastDetectedObject.name}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-medium text-foreground text-lg">
+                        {lastDetectedObject.name}
+                      </h3>
+                      <div className="flex items-center gap-2 mt-1">
+                        <div className="flex gap-0.5">
+                          {Array.from({ length: 5 }).map((_, i) => (
+                            <Leaf
+                              key={i}
+                              className={`w-3 h-3 ${
+                                i < Math.floor(lastDetectedObject.sustainabilityScore / 20) 
+                                  ? 'text-success fill-success' 
+                                  : 'text-muted'
+                              }`}
+                            />
+                          ))}
+                        </div>
+                        <span className="text-xs text-muted-foreground">
+                          {lastDetectedObject.sustainabilityScore}%
+                        </span>
+                      </div>
+                      {lastDetectionTime && (
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Detected: {lastDetectionTime.toLocaleTimeString()}
+                        </p>
+                      )}
+                    </div>
+                    
+                    <div className="text-right">
+                      <span className="text-lg font-semibold text-foreground">
+                        ${lastDetectedObject.price.toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-8 bg-card rounded-lg border border-dashed border-border">
+                  <p className="text-muted-foreground text-lg mb-2">No objects detected yet</p>
+                  <p className="text-sm text-muted-foreground">
+                    Point the camera at objects to see them appear here
+                  </p>
                 </div>
               )}
             </div>

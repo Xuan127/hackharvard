@@ -7,6 +7,7 @@ Integrates Google Shopping data via Oxylabs with comprehensive sustainability an
 
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+from flask_socketio import SocketIO, emit
 import os
 from datetime import datetime
 from real_grocery_scorer_oxylabs import RealGroceryScorerOxylabs
@@ -16,6 +17,7 @@ from ray_ban_routes import create_ray_ban_routes
 # Initialize Flask app
 app = Flask(__name__)
 CORS(app)
+socketio = SocketIO(app, cors_allowed_origins="*")
 
 # Initialize the real grocery scorer with Oxylabs
 # Uses environment variables from .env file
@@ -254,5 +256,5 @@ def quick_test():
 create_ray_ban_routes(app, ray_ban_api)
 
 if __name__ == '__main__':
-    # Run the Flask app
-    app.run(host='0.0.0.0', port=5008, debug=True)
+    # Run the Flask app with SocketIO
+    socketio.run(app, host='0.0.0.0', port=5008, debug=True)

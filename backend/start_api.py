@@ -27,14 +27,15 @@ def main():
     print("\n🌱 Starting API server...")
     
     # Import and run the API
-    from real_grocery_api_oxylabs import app
+    from real_grocery_api_oxylabs import app, socketio
     
     print("✅ API server started successfully!")
     print("📍 Available at: http://localhost:5008")
     print("🔗 Health check: http://localhost:5008/health")
+    print("🔌 WebSocket support enabled")
     
-    # Start the Flask app
-    app.run(debug=True, port=5008, use_reloader=False)
+    # Start the Flask app with SocketIO
+    socketio.run(app, debug=True, port=5008, use_reloader=False)
 
 if __name__ == "__main__":
     main()

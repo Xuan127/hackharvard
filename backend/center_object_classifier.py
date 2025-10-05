@@ -339,6 +339,36 @@ class CenterObjectClassifier:
                     'deal_analysis': None  # Will be populated by deal analysis (performed before cart update)
                 }
                 print(f"🛒 Added to cart: {object_name} ({brand})")
+                
+                # Send cart update to frontend via localStorage file
+                try:
+                    cart_item = {
+                        'id': f"{object_name}_{brand}".lower().replace(' ', '_'),
+                        'name': f"{object_name} ({brand})",
+                        'price': 0.0,  # Will be updated with actual price if available
+                        'image': '/placeholder.svg',  # Placeholder image
+                        'sustainabilityScore': 75  # Default score, will be updated with actual analysis
+                    }
+                    
+                    # Write to a file that can be accessed by frontend
+                    import json
+                    cart_update_file = "../frontend/public/cart_updates.json"
+                    
+                    # Create update data
+                    update_data = {
+                        'timestamp': datetime.now().isoformat(),
+                        'type': 'cart_item_added',
+                        'cart_item': cart_item
+                    }
+                    
+                    # Write to file (overwrite each time for simplicity)
+                    with open(cart_update_file, 'w') as f:
+                        json.dump(update_data, f, indent=2)
+                    
+                    print(f"📤 Cart update written to frontend file: {cart_item['name']}")
+                        
+                except Exception as e:
+                    print(f"⚠️ Failed to write cart update to frontend: {e}")
             
             self.last_cart_update[item_key] = current_time
     
@@ -1293,7 +1323,7 @@ class CenterObjectClassifier:
         # Open video source (camera or file)
         if video_source is None:
             print("Opening camera...")
-            cap = cv2.VideoCapture(0)
+            cap = cv2.VideoCapture(2)
             source_name = "camera"
         else:
             print(f"Opening video file: {video_source}")
