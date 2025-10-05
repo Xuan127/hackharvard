@@ -29,14 +29,6 @@ export const CartItem = ({ item, onRemove }: CartItemProps) => {
   return (
     <Card className="p-4 bg-card shadow-sm hover:shadow-md transition-all duration-200 animate-slide-up">
       <div className="flex items-center gap-4">
-        <div className="w-16 h-16 rounded-lg overflow-hidden bg-muted flex-shrink-0">
-          <img 
-            src={item.image} 
-            alt={item.name}
-            className="w-full h-full object-cover"
-          />
-        </div>
-
         <div className="flex-1 min-w-0">
           <h4 className="font-medium text-foreground truncate">{item.name}</h4>
           <div className="flex items-center gap-2 mt-1">

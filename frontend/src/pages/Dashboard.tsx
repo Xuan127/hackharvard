@@ -301,33 +301,13 @@ const Dashboard = () => {
               {lastDetectedObject ? (
                 <div className="bg-card rounded-lg border border-border p-6 shadow-sm">
                   <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 rounded-lg overflow-hidden bg-muted flex-shrink-0">
-                      <img 
-                        src={lastDetectedObject.image} 
-                        alt={lastDetectedObject.name}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    
                     <div className="flex-1 min-w-0">
                       <h3 className="font-medium text-foreground text-lg">
                         {lastDetectedObject.name}
                       </h3>
                       <div className="flex items-center gap-2 mt-1">
-                        <div className="flex gap-0.5">
-                          {Array.from({ length: 5 }).map((_, i) => (
-                            <Leaf
-                              key={i}
-                              className={`w-3 h-3 ${
-                                i < Math.floor(lastDetectedObject.sustainabilityScore / 20) 
-                                  ? 'text-success fill-success' 
-                                  : 'text-muted'
-                              }`}
-                            />
-                          ))}
-                        </div>
                         <span className="text-xs text-muted-foreground">
-                          {lastDetectedObject.sustainabilityScore}%
+                          Sustainability: {lastDetectedObject.sustainabilityScore}%
                         </span>
                       </div>
                       {lastDetectionTime && (
